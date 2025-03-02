@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flappy Bird</title>
     <style>
         body {
@@ -12,35 +14,21 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            overflow: hidden;
         }
 
         #gameContainer {
             text-align: center;
-        }
-
-        #introScreen, #gameScreen {
-            transition: opacity 0.3s;
-        }
-
-        #introScreen {
-            position: absolute;
-            opacity: 1;
-        }
-
-        #introScreen.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        #gameScreen.hidden {
-            opacity: 0;
-            pointer-events: none;
+            width: 100%;
+            max-width: 500px;
         }
 
         #gameCanvas {
             background: #b0e0e6;
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 100%;
+            height: auto;
         }
 
         h1 {
@@ -73,15 +61,11 @@
 </head>
 <body>
     <div id="gameContainer">
-        <div id="introScreen">
-            <h1>Flappy 🌟</h1>
-            <button id="playButton">Play</button>
-            <div id="highScore">High Score: 0</div>
-        </div>
-        <div id="gameScreen" class="hidden">
-            <div id="score">Score: 0</div>
-            <canvas id="gameCanvas" width="320" height="480"></canvas>
-        </div>
+        <h1>Flappy 🌟</h1>
+        <button id="playButton">Play</button>
+        <div id="highScore">High Score: 0</div>
+        <canvas id="gameCanvas"></canvas>
+        <div id="score">Score: 0</div>
     </div>
 
     <script>
@@ -89,13 +73,19 @@
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('score');
         const highScoreElement = document.getElementById('highScore');
-        const introScreen = document.getElementById('introScreen');
-        const gameScreen = document.getElementById('gameScreen');
         const playButton = document.getElementById('playButton');
+
+        // Adjust canvas size for responsiveness
+        function resizeCanvas() {
+            canvas.width = Math.min(window.innerWidth * 0.9, 400); // Max width for laptop
+            canvas.height = Math.min(window.innerHeight * 0.7, 600); // Adjust for iPhone 12 Mini
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
 
         let bird = {
             x: 50,
-            y: 240,
+            y: canvas.height / 2,
             width: 20,
             height: 20,
             velocity: 0,
@@ -109,8 +99,7 @@
         let gameOver = false;
         let gameStarted = false;
         const pipeWidth = 40;
-        const pipeGap = 120;
-        const pipeFrequency = 100;
+        const pipeGap = canvas.height / 3;
         let frameCount = 0;
 
         highScoreElement.textContent = `High Score: ${highScore}`;
@@ -137,10 +126,8 @@
 
             draw() {
                 ctx.fillStyle = '#98fb98';
-                ctx.beginPath();
-                ctx.roundRect(this.x, 0, pipeWidth, this.topHeight, 10);
-                ctx.roundRect(this.x, canvas.height - this.bottomHeight, pipeWidth, this.bottomHeight, 10);
-                ctx.fill();
+                ctx.fillRect(this.x, 0, pipeWidth, this.topHeight);
+                ctx.fillRect(this.x, canvas.height - this.bottomHeight, pipeWidth, this.bottomHeight);
             }
 
             update() {
@@ -148,28 +135,33 @@
             }
         }
 
-        function handleJump(e) {
-            if (e.code === 'Space' && gameStarted && !gameOver) {
-                e.preventDefault();
-                bird.velocity = bird.jump;
-            }
-            if (e.code === 'Enter' && gameOver) {
-                e.preventDefault();
-                resetGame();
-                gameStarted = true;
-                gameLoop();
-            }
+        function handleJump() {
+            if (!gameStarted || gameOver) return;
+            bird.velocity = bird.jump;
         }
 
-        document.addEventListener('keydown', handleJump);
-
-        playButton.addEventListener('click', () => {
-            introScreen.classList.add('hidden');
-            gameScreen.classList.remove('hidden');
+        function startGame() {
+            playButton.style.display = 'none';
             resetGame();
             gameStarted = true;
             gameLoop();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                handleJump();
+            }
+            if (e.code === 'Enter' && gameOver) {
+                startGame();
+            }
         });
+
+        // Mobile touch support
+        document.addEventListener('touchstart', () => {
+            handleJump();
+        });
+
+        playButton.addEventListener('click', startGame);
 
         function update() {
             if (!gameStarted || gameOver) return;
@@ -177,7 +169,7 @@
             bird.velocity += bird.gravity;
             bird.y += bird.velocity;
 
-            if (frameCount % pipeFrequency === 0) {
+            if (frameCount % 100 === 0) {
                 pipes.push(new Pipe());
             }
             frameCount++;
@@ -185,9 +177,11 @@
             pipes.forEach((pipe, index) => {
                 pipe.update();
 
-                if (bird.x + bird.width > pipe.x && 
+                if (
+                    bird.x + bird.width > pipe.x &&
                     bird.x < pipe.x + pipeWidth &&
-                    (bird.y < pipe.topHeight || bird.y + bird.height > canvas.height - pipe.bottomHeight)) {
+                    (bird.y < pipe.topHeight || bird.y + bird.height > canvas.height - pipe.bottomHeight)
+                ) {
                     gameOver = true;
                     updateHighScore();
                 }
@@ -233,7 +227,7 @@
         }
 
         function resetGame() {
-            bird.y = 240;
+            bird.y = canvas.height / 2;
             bird.velocity = 0;
             pipes = [];
             score = 0;
